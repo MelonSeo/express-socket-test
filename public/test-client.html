@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket.io 테스트 클라이언트</title>
+    <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .connected {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .disconnected {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin: 5px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      #log {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        height: 400px;
+        overflow-y: auto;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        margin-top: 20px;
+        border-radius: 4px;
+      }
+      .log-entry {
+        margin: 5px 0;
+        padding: 5px;
+        border-left: 3px solid #007bff;
+        padding-left: 10px;
+      }
+      .log-entry.received {
+        border-left-color: #28a745;
+      }
+      .log-entry.sent {
+        border-left-color: #ffc107;
+      }
+      .log-entry.error {
+        border-left-color: #dc3545;
+      }
+      input {
+        padding: 8px;
+        margin: 5px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        width: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔌 Socket.io 테스트 클라이언트</h1>
+
+      <div id="status" class="status disconnected">연결 끊김</div>
+
+      <div>
+        <input
+          type="text"
+          id="serverUrl"
+          value="http://localhost:8081"
+          placeholder="서버 URL"
+        />
+        <button id="connectBtn" onclick="connect()">연결</button>
+        <button id="disconnectBtn" onclick="disconnect()" disabled>연결 끊기</button>
+      </div>
+
+      <div style="margin-top: 20px">
+        <h3>서버로 이벤트 전송:</h3>
+        <button onclick="sendHello()">hello 이벤트 전송</button>
+      </div>
+
+      <div id="log"></div>
+    </div>
+
+    <script>
+      let socket = null;
+
+      function log(message, type = "info") {
+        const logDiv = document.getElementById("log");
+        const entry = document.createElement("div");
+        entry.className = `log-entry ${type}`;
+        const timestamp = new Date().toLocaleTimeString();
+        entry.textContent = `[${timestamp}] ${message}`;
+        logDiv.appendChild(entry);
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+
+      function updateStatus(connected) {
+        const statusDiv = document.getElementById("status");
+        const connectBtn = document.getElementById("connectBtn");
+        const disconnectBtn = document.getElementById("disconnectBtn");
+
+        if (connected) {
+          statusDiv.textContent = "✅ 연결됨";
+          statusDiv.className = "status connected";
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+        } else {
+          statusDiv.textContent = "❌ 연결 끊김";
+          statusDiv.className = "status disconnected";
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+        }
+      }
+
+      function connect() {
+        const serverUrl = document.getElementById("serverUrl").value;
+        if (socket) {
+          socket.disconnect();
+        }
+
+        socket = io(serverUrl);
+
+        socket.on("connect", () => {
+          log("서버에 연결되었습니다!", "received");
+          updateStatus(true);
+          const statusCheck = setInterval(() => {
+            if (socket && socket.connected) {
+              log(`💓 연결 유지 중 (${new Date().toLocaleTimeString()})`, "info");
+            } else {
+              clearInterval(statusCheck);
+            }
+          }, 5000);
+          socket.on("disconnect", () => {
+            clearInterval(statusCheck);
+          });
+        });
+
+        socket.on("disconnect", () => {
+          log("서버 연결이 끊어졌습니다.", "error");
+          updateStatus(false);
+        });
+
+        socket.on("connect_error", (error) => {
+          log(`연결 오류: ${error.message}`, "error");
+          updateStatus(false);
+        });
+
+        // 서버에서 보내는 이벤트들 수신
+        socket.on("noArg", () => {
+          log("📨 noArg 이벤트 수신 (인자 없음)", "received");
+        });
+
+        socket.on("basicEmit", (a, b, c) => {
+          log(
+            `📨 basicEmit 이벤트 수신: a=${a}, b=${b}, c=${JSON.stringify(
+              Array.from(c)
+            )}`,
+            "received"
+          );
+        });
+
+        socket.on("withAck", (d, callback) => {
+          log(`📨 withAck 이벤트 수신: d=${d}`, "received");
+          if (typeof callback === "function") {
+            const response = 42;
+            log(`📤 ACK 응답 전송: ${response}`, "sent");
+            callback(response);
+          }
+        });
+      }
+
+      function disconnect() {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+          log("연결을 종료했습니다.", "info");
+          updateStatus(false);
+        }
+      }
+
+      function sendHello() {
+        if (socket && socket.connected) {
+          socket.emit("hello");
+          log("📤 hello 이벤트 전송", "sent");
+        } else {
+          log("먼저 서버에 연결해주세요!", "error");
+        }
+      }
+
+      // 페이지 로드 시 자동 연결 (선택사항)
+      // connect();
+    </script>
+  </body>
+</html>

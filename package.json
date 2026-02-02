@@ -1,0 +1,43 @@
+{
+  "name": "spacemap-socket-express",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/index.js",
+    "dev": "nodemon --watch 'src/**/*.ts' --exec 'tsx' src/index.ts",
+    "build": "tsc",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"public/**/*.{html,css,js}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"public/**/*.{html,css,js}\"",
+    "prepare": "husky install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.1.0",
+    "@types/socket.io": "^3.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "eslint": "^9.39.2",
+    "husky": "^8.0.0",
+    "lint-staged": "^16.2.7",
+    "nodemon": "^3.1.11",
+    "prettier": "^3.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint",
+      "prettier --check"
+    ]
+  }
+}
